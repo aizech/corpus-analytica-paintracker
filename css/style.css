@@ -1,0 +1,529 @@
+/*body {*/
+/*  margin: 0;*/
+/*  padding: 0;*/
+/*  max-height: 100%;*/
+/*  background-image: url("https://images.unsplash.com/photo-1628313388780-fb046760ef1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1932&q=80");*/
+/* The image used */
+/* background-color: #cccccc; */
+/* Used if the image is unavailable */
+/*  background-position: center;*/
+/*  align-content: center;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/* Center the image */
+/*  background-repeat: no-repeat;*/
+/* Do not repeat the image */
+/*  background-size: fill;*/
+/* Resize the background image to cover the entire container */
+/*  font-family: 'Poppins';*/
+
+/*}*/
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.1);
+  /* Semi-transparent black */
+  z-index: 1000;
+  /* Adjust this value to ensure the overlay is on top of everything */
+  display: none;
+  /* Initially hidden */
+}
+
+.no-scroll {
+  overflow: hidden;
+  position: absolute;
+}
+
+#renderCanvas {
+  width: 100%;
+  height: 90vh;
+  border-radius: 25px;
+  max-width: 1000px;
+  display: block;
+  background-color: transparent;
+
+  /* Maintain aspect ratio */
+}
+
+/* Additional styling for the container */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+}
+
+/* Additional styling for the container */
+/* .container {} */
+
+/* Additional styling for the modal */
+
+.canvasContainer {
+  height: 90vh;
+  width: 100%;
+  position: relative;
+  max-width: 1000px;
+  align-items: center;
+  align-content: center;
+  align-self: center;
+  background-color: transparent;
+}
+
+/* .toolbarContainer {
+height: 5vh;
+max-width: 800px;
+align-items: center;
+align-content: center;
+align-self: center;
+
+} */
+
+.modal {
+  display: block;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 1000px;
+  max-height: 90vh;
+  z-index: 9999;
+  border-radius: 25px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content {
+  position: relative;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(9.5px);
+  -webkit-backdrop-filter: blur(9.5px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+  z-index: 100;
+  font-size: 24px;
+  /* Adjust the size as needed */
+}
+
+/* Additional styling for the buttons in the modal */
+.modal .gender-button {
+  margin: 5px;
+}
+
+/* Additional styling for the toolbar */
+.modal .toolbar {
+  display: flex;
+  position: absolute;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #131313;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  height: 9vh;
+  z-index: 100;
+  bottom: 0;
+  width: 100%;
+}
+
+@media screen and (max-width: 450px) and (min-width: 300px) {
+  #renderCanvas {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0px;
+    max-width: 800px;
+    display: block;
+    background-color: transparent;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  Additional styling for the container .container {}
+
+  Additional styling for the modal .canvasContainer {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    max-width: 1000px;
+    align-items: center;
+    align-content: center;
+    align-self: center;
+    background-color: transparent;
+  }
+
+  .toolbarContainer {
+    height: 5vh;
+    max-width: 800px;
+    align-items: center;
+    align-content: center;
+    align-self: center;
+  }
+
+  .features-container {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  Container for the switch buttons .switch-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .modal {
+    display: block;
+    position: fixed;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 800px;
+    max-height: 100%;
+    z-index: 9999;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
+}
+
+.switch {
+  font-size: 17px;
+  position: relative;
+  display: inline-block;
+  width: 85px;
+  height: 45px;
+  margin-left: 15px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #73C0FC;
+  transition: .4s;
+  border-radius: 30px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 40px;
+  width: 45px;
+  border-radius: 20px;
+  left: 5px;
+  bottom: 2px;
+  z-index: 2;
+  background-color: #e8e8e8;
+  transition: .4s;
+}
+
+.sun svg {
+  position: absolute;
+  top: 25%;
+  left: 50px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+}
+
+.moon svg {
+  fill: #73C0FC;
+  position: absolute;
+  top: 25%;
+  left: 10px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+}
+
+/* .switch:hover */
+.sun svg {
+  animation: rotate 15s linear infinite;
+}
+
+/* .switch:hover */
+.moon svg {
+  animation: tilt 5s linear infinite;
+}
+
+.input:checked+.slider {
+  background-color: #183153;
+}
+
+.input:focus+.slider {
+  box-shadow: 0 0 1px #183153;
+}
+
+.input:checked+.slider:before {
+  transform: translateX(30px);
+}
+
+.button-container {
+  display: flex;
+}
+
+#pointerButton,
+#resetButton,
+#saveButton {
+  /*display: flex;*/
+  align-items: center;
+  justify-content: center;
+  /*gap: 10px;*/
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #7e97b8;
+  background-color: #0f0f0f;
+  border-style: solid;
+  border-width: 2px 2px 2px 2px;
+  border-color: rgba(255, 255, 255, 0.333);
+  border-radius: 40px 40px 40px 40px;
+  padding: 11px 19px 11px 23px;
+  transform: translate(0px, 0px) rotate(0deg);
+  transition: 0.2s;
+  box-shadow: -2px -1px 8px 0px #000000, 2px 1px 8px 0px rgb(95 157 231 / 48%);
+  margin-right: 15px;
+}
+
+#pointerButton:hover,
+#resetButton:hover,
+#saveButton:hover {
+  color: #516d91;
+  background-color: #1e1e1e;
+  box-shadow: -2px -1px 8px 0px #000000, 2px 1px 8px 0px rgb(95 157 231 / 48%);
+}
+
+#pointerButton:active,
+#resetButton:active,
+#saveButton:active {
+  box-shadow: none;
+}
+
+#pointerButton.active {
+  background-color: rgb(0, 179, 244);
+  /* Set your preferred illuminated background color */
+  box-shadow: -2px -1px 8px 0px #000000, 2px 1px 8px 0px rgba(95, 195, 231, 0.48);
+  color: black;
+  /* Set the text color for better visibility */
+  /* Add any other styling you want for the active state */
+}
+
+.marker-size-container {
+  margin-top: 10px;
+}
+
+/* Style for the marker size label */
+.marker-size-container label {
+  display: flex;
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+/* Style for the marker size dropdown */
+.marker-size-container select {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.cursor {
+  position: absolute;
+  border: 2px solid rgba(255, 0, 0, 0.8);
+  /* Rote Farbe mit Alpha */
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+#markerSizeSlider {
+  height: 20px;
+}
+
+.range {
+  height: 50px;
+  width: 200px;
+  margin-right: 20px;
+  background: #0f0f0f;
+  border-radius: 10px;
+  padding: 0 25px 0 25px;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.1);
+    border-style: solid;
+  border-width: 2px 2px 2px 2px;
+  border-color: rgba(255, 255, 255, 0.333);
+}
+
+.sliderValue {
+  position: relative;
+  width: 100%;
+}
+
+.sliderValue span {
+  position: absolute;
+  height: 45px;
+  width: 25px;
+  transform: translateX(-70%) scale(0);
+  font-weight: 500;
+  font-family: Arial, sans-serif;
+  top: -40px;
+  line-height: 55px;
+  z-index: 2;
+  color: #fff;
+  transform-origin: bottom;
+  transition: transform 0.3s ease-in-out;
+}
+
+.sliderValue span.show {
+  transform: translateX(-70%) scale(1);
+}
+
+.sliderValue span:after {
+  position: absolute;
+  content: '';
+  height: 100%;
+  width: 100%;
+  background: #664AFF;
+  border: 3px solid #fff;
+  z-index: -1;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  border-bottom-left-radius: 50%;
+  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+  border-top-left-radius: 50%;
+  border-top-right-radius: 50%;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+}
+
+.field .value {
+  position: absolute;
+  font-size: 12px;
+  color: #FFF;
+  font-weight: 600;
+}
+
+.field .value.left {
+  left: -15px;
+}
+
+.field .value.right {
+  right: -17px;
+}
+
+.range input {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: #4f4f4f;
+  border-radius: 5px;
+  outline: none;
+  border: none;
+  z-index: 2222;
+}
+
+.range input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: red;
+  border-radius: 50%;
+  background: #7e97b8;
+  border: 1px solid #FFF;
+  cursor: pointer;
+}
+
+.range input::-moz-range-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: red;
+  border-radius: 50%;
+  background: #664AFF;
+  border: 1px solid #664AFF;
+  cursor: pointer;
+}
+
+.range input::-moz-range-progress {
+  background: #664AFF; 
+}
+
+
+.popup {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  overflow: auto;
+  background-color: rgba(15, 15, 15, 0.411);
+}
+
+.popup-content {
+  margin: 15% auto;
+  padding: 10px;
+  color: #1a1a1a;
+  width: 70%;
+  align-items: end;
+  border-radius: 10px;
+  backdrop-filter: blur(12px) saturate(200%);
+  -webkit-backdrop-filter: blur(12px) saturate(200%);
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(209, 213, 219, 0.3);
+}
+
+.popup-close {
+  position: relative;
+  color: hsl(0, 0%, 6%);
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.popup-close:hover,
+.popup-close:focus {
+  color: rgb(28, 28, 28);
+  text-decoration: none;
+  cursor: pointer;
+}

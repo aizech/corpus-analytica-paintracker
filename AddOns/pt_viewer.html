@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radiologic Reviews PainTracker</title>
+    <!-- Include Babylon.js library -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <!-- Include FontAwesome for icons -->
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> -->
+    <!-- Include CSS for styling -->
+    <!-- <link rel="stylesheet" href="style.css"> -->
+    <!-- Include Babylon.js initialization script -->
+    <!-- <script src="doctor.js"></script> -->
+</head>
+
+
+
+
+<body>
+    <!-- Toggle switch for switching between male and female models -->
+    <!-- Babylon.js canvas element -->
+    <div id="overlay" class="overlay"></div> <!-- Overlay for background interactions -->
+    <div class="container">
+        <button id="openModalBtn" class="gender-button">Öffnen </button>
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <div id="cursor" class="cursor"></div>
+                <div class="canvasContainer">
+                    <canvas id="renderCanvas"></canvas>
+                    <div class="popupContainer">
+                        <div id="popup" class="popup">
+                            <div class="popup-content">
+                                <span id="popup-close" class="popup-close">
+                                    <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"
+                                            stroke="#CCCCCC" stroke-width="0.624"></g>
+                                        <g id="SVGRepo_iconCarrier">
+                                            <g opacity="0.4">
+                                                <path d="M9.16992 14.8299L14.8299 9.16992" stroke="#121212"
+                                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                </path>
+                                                <path d="M14.8299 14.8299L9.16992 9.16992" stroke="#121212"
+                                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                </path>
+                                            </g>
+                                            <path
+                                                d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z"
+                                                stroke="#121212" stroke-width="1.5" stroke-linecap="round"
+                                                stroke-linejoin="round"></path>
+                                        </g>
+                                    </svg>
+
+                                </span>
+                                <p id="popup-description"></p>
+                            </div>
+                        </div>
+                        <span class="close-btn" onclick="closeModal()">
+                            <svg width="40px" height="40px" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"
+                                    stroke="#CCCCCC" stroke-width="0.624"></g>
+                                <g id="SVGRepo_iconCarrier">
+                                    <g opacity="0.4">
+                                        <path d="M9.16992 14.8299L14.8299 9.16992" stroke="#ffffff" stroke-width="1.5"
+                                            stroke-linecap="round" stroke-linejoin="round"></path>
+                                        <path d="M14.8299 14.8299L9.16992 9.16992" stroke="#ffffff" stroke-width="1.5"
+                                            stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </g>
+                                    <path
+                                        d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z"
+                                        stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                </g>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Funktionalität Grundgerüst  -->
+        <script>
+            const openModalBtn = document.getElementById('openModalBtn');
+            const modal = document.getElementById('myModal');
+
+            openModalBtn.addEventListener('click', openModal);
+
+            function openModal() {
+                modal.style.display = 'block';
+            }
+
+
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+
+        </script>
+
+
+        <!-- Haupt Scripte  -->
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                var canvas = document.getElementById("renderCanvas");
+                var canvasSize = Math.min(window.innerWidth, window.innerHeight) * 1;
+                var markerMeshes = []; // Store added marker meshes
+
+                canvas.width = canvasSize;
+                canvas.height = canvasSize;
+
+                var engine = new BABYLON.Engine(canvas, true);
+                var scene = new BABYLON.Scene(engine);
+                scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+
+                var camera = new BABYLON.ArcRotateCamera(
+                    "camera",
+                    Math.PI / 2,
+                    Math.PI / 3,
+                    canvasSize * 5,
+                    BABYLON.Vector3.Zero(),
+                    scene
+                );
+                camera.attachControl(canvas, true);
+
+                var sceneCenter = new BABYLON.Vector3(0, 950, 0);
+                camera.setTarget(sceneCenter);
+
+                var lightDirection = new BABYLON.Vector3(0, -1, 0);
+                var light = new BABYLON.DirectionalLight("dirLight", lightDirection, scene);
+                light.position = new BABYLON.Vector3(0, 15, -30);
+                light.intensity = 2;
+                light.castShadow = true;
+                var shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
+                shadowGenerator.usePoissonSampling = true;
+
+                var currentModel = "male_model.glb";
+
+                function loadAndConfigureModel(modelPath, scene) {
+                    BABYLON.SceneLoader.ImportMesh("", "", modelPath, scene, function (newMeshes) {
+                        if (currentModel) {
+                            currentModel.dispose();
+                        }
+
+                        var model = newMeshes[0];
+
+                        model.position = BABYLON.Vector3.Zero();
+                        model.rotation = BABYLON.Vector3.Zero();
+                        model.scaling = new BABYLON.Vector3(1, 1, 1);
+
+                        model.position.y = -model.getBoundingInfo().boundingBox.extendSize.y;
+
+                        currentModel = model;
+
+                        shadowGenerator.addShadowCaster(model);
+
+                    });
+                }
+
+
+                // Function to show the marker description in a popup
+                function showMarkerDescription(description) {
+                    var popup = document.getElementById("popup");
+                    var popupDescription = document.getElementById("popup-description");
+
+                    // Set the description text
+                    popupDescription.textContent = "Beschwerden:\n" + description;
+
+                    // Display the popup
+                    popup.style.display = "block";
+                }
+
+                function resizeCanvas() {
+                    canvasSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+                    canvas.width = canvasSize;
+                    canvas.height = canvasSize;
+                    camera.radius = canvasSize * 1.5;
+                    engine.resize();
+                }
+
+                // Lade die JSON-Datei mit den Arztdaten
+                fetch('pt_data.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        var modelURL = data.modelURL; // Verwende die im JSON-Datenobjekt gespeicherte Modell-URL
+                        var modelPath = modelURL === "female" ? "https://broeder-dev.de/stg/wp-content/uploads/2023/08/female_model-1.glb" : "https://broeder-dev.de/stg/wp-content/uploads/2023/08/male_model-1.glb";
+                        // var modelPath = modelURL.glb === "female" ? "female" : "male_model.glb"
+                        loadAndConfigureModel(modelPath, scene);
+                        window.addEventListener("resize", resizeCanvas);
+
+                        var hemiLight = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+                        hemiLight.intensity = 1;
+
+                        data.markerPositions.forEach(markerData => {
+                            var markerPosition = markerData.position;
+                            var markerSize = markerData.size;
+                            var markerDescription = markerData.description;
+
+                            var marker = BABYLON.MeshBuilder.CreateSphere("marker", { diameter: 20 * markerSize, segments: 32 }, scene);
+                            marker.position = new BABYLON.Vector3(markerPosition._x, markerPosition._y, markerPosition._z);
+
+
+                            var markerMaterial = new BABYLON.StandardMaterial("markerMaterial", scene);
+                            markerMaterial.diffuseColor = BABYLON.Color3.Red();
+                            markerMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                            markerMaterial.alpha = 0.5;
+                            markerMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                            marker.material = markerMaterial;
+
+                            // Attach a click event to the marker to display the description
+                            marker.actionManager = new BABYLON.ActionManager(scene);
+                            marker.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                                BABYLON.ActionManager.OnPickTrigger, function () {
+                                    showMarkerDescription(markerDescription);
+                                }
+                            ));
+
+                            markerMeshes.push(marker); // Speichere den Marker im Array
+
+
+
+                        });
+
+
+                        engine.runRenderLoop(function () {
+                            scene.render();
+                        });
+                    });
+
+                var popupCloseButton = document.getElementById("popup-close");
+                popupCloseButton.addEventListener("click", function () {
+                    var popup = document.getElementById("popup");
+                    popup.style.display = "none";
+                });
+                // Rest des Codes für Marker, Rendering usw.
+                // ...
+
+                engine.runRenderLoop(function () {
+                    scene.render();
+                });
+            });
+        </script>
+
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                max-height: 100%;
+                background-image: url("https://images.unsplash.com/photo-1511300636408-a63a89df3482?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80");
+                /* The image used */
+                /* background-color: #cccccc; */
+                /* Used if the image is unavailable */
+                background-position: center;
+                align-content: center;
+                align-items: center;
+                justify-content: center;
+                /* Center the image */
+                background-repeat: no-repeat;
+                /* Do not repeat the image */
+                background-size: fill;
+                /* Resize the background image to cover the entire container */
+                font-family: 'Poppins';
+
+            }
+
+
+
+            #renderCanvas {
+                width: 100%;
+                height: 90vh;
+                border-radius: 25px;
+                max-width: 800px;
+                display: block;
+                background-color: transparent;
+
+                /* Maintain aspect ratio */
+            }
+
+
+            /* Additional styling for the container */
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+            }
+
+
+            .canvasContainer {
+                height: 100%;
+                width: 100%;
+                position: relative;
+                max-width: 800px;
+                align-items: center;
+                align-content: center;
+                align-self: center;
+                background-color: transparent;
+            }
+
+
+            .modal {
+                display: block;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 80%;
+                max-width: 800px;
+                max-height: 90vh;
+                z-index: 9999;
+                border-radius: 25px;
+                overflow: hidden;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+
+            .modal-content {
+                position: relative;
+                padding: 0;
+                font-weight: 500;
+                color: #000;
+                font-family: Arial, sans-serif;
+                background: rgba(0, 0, 0, 0.7);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                backdrop-filter: blur(9.5px);
+                -webkit-backdrop-filter: blur(9.5px);
+                border-radius: 10px;
+                border: 1px solid rgba(255, 255, 255, 0.18);
+            }
+
+            .close-btn {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                cursor: pointer;
+                z-index: 100;
+                font-size: 24px;
+                /* Adjust the size as needed */
+            }
+
+            /* Additional styling for the buttons in the modal */
+            .modal .gender-button {
+                margin: 5px;
+                font-weight: 700;
+                color: #000;
+                font-family: Arial, sans-serif;
+
+            }
+
+            /* Additional styling for the toolbar */
+            .modal .toolbar {
+                display: flex;
+                position: relative;
+                justify-content: space-between;
+                align-items: center;
+                background-color: #131313;
+                padding-top: 15px;
+                padding-bottom: 15px;
+                height: 40px;
+                z-index: 100;
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+            }
+
+
+
+
+            .popup {
+                display: none;
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                border-radius: 20px;
+                overflow: auto;
+                background-color: rgba(15, 15, 15, 0.411);
+            }
+
+            .popup-content {
+                margin: 15% auto;
+                padding: 10px;
+                color: #1a1a1a;
+                width: 70%;
+                align-items: end;
+                border-radius: 10px;
+                backdrop-filter: blur(12px) saturate(200%);
+                -webkit-backdrop-filter: blur(12px) saturate(200%);
+                background-color: rgba(255, 255, 255, 0.5);
+                border-radius: 12px;
+                border: 1px solid rgba(209, 213, 219, 0.3);
+            }
+
+            .popup-close {
+                position: relative;
+                color: hsl(0, 0%, 6%);
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+
+            .popup-close:hover,
+            .popup-close:focus {
+                color: rgb(28, 28, 28);
+                text-decoration: none;
+                cursor: pointer;
+            }
+
+            @media screen and (max-width: 450px) and (min-width: 300px) {
+                #renderCanvas {
+                    width: 100%;
+                    height: 100vh;
+                    border-radius: 0px;
+                    max-width: 800px;
+                    display: block;
+                    background-color: transparent;
+
+                }
+
+                .canvasContainer {
+                    height: 100%;
+                    width: 100%;
+                    position: relative;
+                    max-width: 800px;
+                    align-items: center;
+                    align-content: center;
+                    align-self: center;
+                    background-color: transparent;
+                }
+
+                .features-container {
+                    display: flex;
+                    align-items: center;
+                    margin-top: 10px;
+                }
+
+                /* Container for the switch buttons */
+                .switch-container {
+                    display: flex;
+                    justify-content: center;
+                    margin-top: 10px;
+
+                }
+
+                .modal {
+                    display: block;
+                    position: fixed;
+
+                    transform: translate(-50%, -50%);
+                    width: 100%;
+                    max-width: 800px;
+                    max-height: 100%;
+                    z-index: 9999;
+                    border-radius: 25px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                }
+
+            }
+
+            .switch {
+                font-size: 17px;
+                position: relative;
+                display: inline-block;
+                width: 85px;
+                height: 45px;
+                margin-left: 15px;
+            }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #73C0FC;
+                transition: .4s;
+                border-radius: 30px;
+            }
+
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 40px;
+                width: 45px;
+                border-radius: 20px;
+                left: 5px;
+                bottom: 2px;
+                z-index: 2;
+                background-color: #e8e8e8;
+                transition: .4s;
+            }
+
+
+
+            .sun svg {
+                position: absolute;
+                top: 25%;
+                left: 50px;
+                z-index: 1;
+                width: 24px;
+                height: 24px;
+            }
+
+            .moon svg {
+                fill: #73C0FC;
+                position: absolute;
+                top: 25%;
+                left: 10px;
+                z-index: 1;
+                width: 24px;
+                height: 24px;
+            }
+
+            /* .switch:hover */
+            .sun svg {
+                animation: rotate 15s linear infinite;
+            }
+
+            /* .switch:hover */
+            .moon svg {
+                animation: tilt 5s linear infinite;
+            }
+
+            .input:checked+.slider {
+                background-color: #183153;
+            }
+
+            .input:focus+.slider {
+                box-shadow: 0 0 1px #183153;
+            }
+
+            .input:checked+.slider:before {
+                transform: translateX(30px);
+            }
+
+            .button-container {
+                display: flex;
+
+            }
+
+            button {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                font-weight: 700;
+                font-family: Arial, sans-serif;                font-size: 15px;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                color: #7e97b8;
+                background-color: #0f0f0f;
+                border-style: solid;
+                border-width: 2px 2px 2px 2px;
+                border-color: rgba(255, 255, 255, 0.333);
+                border-radius: 40px 40px 40px 40px;
+                padding: 11px 19px 11px 23px;
+                transform: translate(0px, 0px) rotate(0deg);
+                transition: 0.2s;
+                box-shadow: -4px -2px 16px 0px #000000, 4px 2px 16px 0px rgb(95 157 231 / 48%);
+                margin-right: 15px;
+
+            }
+
+            button:hover {
+                color: #516d91;
+                background-color: #1e1e1e;
+                box-shadow: -2px -1px 8px 0px #000000, 2px 1px 8px 0px rgb(95 157 231 / 48%);
+            }
+
+            button:active {
+                box-shadow: none;
+            }
+
+            .active {
+                background-color: rgb(0, 179, 244);
+                /* Set your preferred illuminated background color */
+                box-shadow: -2px -1px 8px 0px #000000, 2px 1px 8px 0px rgba(95, 195, 231, 0.48);
+
+                color: black;
+                /* Set the text color for better visibility */
+                /* Add any other styling you want for the active state */
+            }
+
+            .marker-size-container {
+                margin-top: 10px;
+            }
+
+            /* Style for the marker size label */
+            .marker-size-container label {
+                display: flex;
+                font-size: 16px;
+                margin-bottom: 5px;
+            }
+
+            /* Style for the marker size dropdown */
+            .marker-size-container select {
+                width: 100%;
+                padding: 8px;
+                font-size: 14px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background-color: #fff;
+            }
+
+            .cursor {
+                position: absolute;
+                border: 2px solid rgba(255, 0, 0, 0.8);
+                /* Rote Farbe mit Alpha */
+                border-radius: 50%;
+                pointer-events: none;
+                transform: translate(-50%, -50%);
+            }
+
+
+            #markerSizeSlider {
+                height: 20px;
+            }
+        </style>
+</body>
+
+</html>
