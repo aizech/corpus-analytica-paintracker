@@ -92,8 +92,8 @@ cases.
 
 == Screenshots ==
 
-1. PainTracker modal with 3D body model and toolbar
-2. Marker list with delete buttons
+1. PainTracker modal with 3D body model and toolbar (`paintracker_modal.png`)
+2. Marker list and markers placed on the 3D model (`paintracker_modal_with_marker.png`)
 
 == Changelog ==
 
