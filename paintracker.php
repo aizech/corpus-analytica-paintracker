@@ -1,11 +1,14 @@
 <?php
 /*
- * Plugin Name:       Corpus Analytica - Paintracker
+ * Plugin Name:       Corpus Analytica – PainTracker
  * Plugin URI:        https://www.corpusanalytica.com/
- * Description:       Track your pain
+ * Description:       Interactive 3D pain mapping tool that lets patients mark pain areas on a male/female body model and saves the data as JSON.
  * Version:           1.0.0
  * Author:            Connor Bröder; Bernhard Zechmann
+ * Author URI:        https://www.corpusanalytica.com/
  * Text Domain:       wp-corpus-analytica-paintracker
+ * Requires at least: 6.0
+ * Requires PHP:      8.0
 */
 
 if (!defined('ABSPATH')) {
@@ -61,6 +64,10 @@ function enqueue_3d_model_scripts()
     wp_enqueue_script('babylonjs', 'https://cdn.babylonjs.com/babylon.js', array(), '1.0', true);
     wp_enqueue_script('babylonjs-loaders', 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js', array('babylonjs'), '1.0', true);
     wp_enqueue_script('plugin-script', plugin_dir_url(__FILE__) . 'js/script.js', array('babylonjs', 'babylonjs-loaders'), '1.0', true);
+    // Expose plugin base URL to JS so we can load GLB models from the plugin folder
+    wp_localize_script('plugin-script', 'PaintrackerConfig', array(
+        'baseUrl' => plugin_dir_url(__FILE__),
+    ));
     wp_enqueue_script('custom-script', plugin_dir_url(__FILE__) . 'js/custom-script.js', array(), '1.0', true);
     wp_enqueue_style('plugin-style', plugin_dir_url(__FILE__) . 'css/style.css', array(), '1.0');
 }
@@ -76,13 +83,15 @@ function my_custom_form_tag()
 
 function my_custom_form_tag_handler($tag)
 {
-    $attributes = shortcode_atts(array(), $tag->parameters);
+    $attributes = shortcode_atts(array(
+        'label' => 'Open Modal',
+    ), $tag->parameters);
 
     return '<input type="hidden" name="json_data" id="json_data" value="">
             <div id="modalOverlay" class="overlay"></div>
             <!-- Toggle switch for switching between male and female models -->
             <div class="container">
-                <button id="openModalBtn" class="gender-button">Open Modal</button>
+                <button id="openModalBtn" class="gender-button">' . esc_html($attributes['label']) . '</button>
                 <div id="myModal" class="modal">
                     <div class="modal-content">
                         <div id="cursor" class="cursor"></div>
@@ -130,27 +139,14 @@ function my_custom_form_tag_handler($tag)
                         <div class="toolbar">
                             <div>
                                 <label class="switch">
-                                    <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" width="16"
-                                            height="16" fill="currentColor"
-                                            class="bi bi-gender-female"
-                                            viewBox="0 0 16 16">
-                                            <path fill-rule="evenodd"
-                                                d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5z">
-                                            </path>
-                                        </svg></span>
-                                    <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" width="16"
-                                            height="16" fill="currentColor"
-                                            class="bi bi-gender-male"
-                                            viewBox="0 0 16 16">
-                                            <path fill-rule="evenodd"
-                                                d="M9.5 2a.5.5 0 0 1 0-1h5a.5.a.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2H9.5zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z">
-                                            </path>
-                                        </svg></span>
+                                    <span class="sun">♀</span>
+                                    <span class="moon">♂</span>
                                     <input type="checkbox" class="input" id="modelToggle">
                                     <span class="slider"></span>
                                 </label>
                             </div>
                             <div class="button-container">
+                                <span class="marker-size-label">Markergröße</span>
                                 <div class="range">
                                     <div class="sliderValue">
                                         <span>100</span>
@@ -170,12 +166,12 @@ function my_custom_form_tag_handler($tag)
                                     <i style="font-size: 17px;" class="fa fa-highlighter"></i>
                                     Markieren
                                 </button>
-                                <button id="resetButton">Löschen</button>
+                                <button id="resetButton">Alle Marker löschen</button>
                                 <button id="saveButton">Speichern</button>
                             </div>
                         </div>
                     </div>
-                    <div class="features-container">
+                    <div class="features-container" id="paintracker-features-container">
                     </div>
                 </div>
             </div>';
@@ -184,14 +180,27 @@ function my_custom_form_tag_handler($tag)
 // Reusable PainTracker widget for external integrations (e.g. Corpus Analytica 2nd Opinion)
 // This allows embedding the same UI without requiring a CF7 form context.
 if (!function_exists('paintracker_render_widget')) {
-    function paintracker_render_widget()
+    function paintracker_render_widget($params = array())
     {
         // Build a minimal tag-like object compatible with the handler signature
         $tag = (object) [
-            'parameters' => [],
+            'parameters' => $params,
         ];
 
         return my_custom_form_tag_handler($tag);
     }
 }
+
+// Shortcode to embed PainTracker on any page/post via [wp-paintracker]
+add_shortcode('wp-paintracker', function ($atts) {
+    $atts = shortcode_atts(array(
+        'label' => 'Open PainTracker',
+    ), $atts, 'wp-paintracker');
+
+    if (function_exists('paintracker_render_widget')) {
+        return paintracker_render_widget($atts);
+    }
+
+    return '';
+});
 ?>

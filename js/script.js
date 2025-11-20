@@ -16,6 +16,10 @@ document.addEventListener("DOMContentLoaded", function () {
       canvasSize * 5,
       BABYLON.Vector3.Zero(),
       scene);
+    // Enable intuitive zooming with mouse wheel and clamp zoom distance
+    camera.lowerRadiusLimit = canvasSize * 0.5;
+    camera.upperRadiusLimit = canvasSize * 6;
+    camera.wheelDeltaPercentage = 0.01;
     camera.attachControl(canvas, true);
 
     var sceneCenter=new BABYLON.Vector3(0, 800, 0);
@@ -33,7 +37,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var currentModel=null;
 
     function loadAndConfigureModel(modelPath, scene) {
-      BABYLON.SceneLoader.ImportMesh("", "", modelPath, scene, function (newMeshes) {
+      // Split full URL into rootUrl and filename so Babylon can load remote models correctly
+      var lastSlashIndex = modelPath.lastIndexOf("/");
+      var rootUrl = modelPath.substring(0, lastSlashIndex + 1);
+      var fileName = modelPath.substring(lastSlashIndex + 1);
+
+      BABYLON.SceneLoader.ImportMesh("", rootUrl, fileName, scene, function (newMeshes) {
         if (currentModel) {
             currentModel.dispose();
         }
@@ -61,8 +70,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var selectedModel="male";
     
-    var modelUrlMale = "https://broeder-dev.de/stg/wp-content/uploads/2023/08/male_model-1.glb";
-    var modelUrlFemale = "https://broeder-dev.de/stg/wp-content/uploads/2023/08/female_model-1.glb";
+    // Build model URLs from the plugin base URL provided by PHP
+    var baseUrl = (window.PaintrackerConfig && PaintrackerConfig.baseUrl) ? PaintrackerConfig.baseUrl : "";
+    var modelUrlMale = baseUrl + "models/male_model-1.glb";
+    var modelUrlFemale = baseUrl + "models/female_model-1.glb";
 
     function init() {
       loadAndConfigureModel(modelUrlMale, scene);
@@ -98,6 +109,79 @@ document.addEventListener("DOMContentLoaded", function () {
       var pointerEnabled=false;
       var pointerMesh=null;
       var markerPositions=[];
+      var markerListContainer = document.getElementById('paintracker-features-container');
+
+      // Ensure we have a container for the marker list; create one if missing
+      if (!markerListContainer) {
+        var modalContent = document.querySelector('#myModal .modal-content');
+        if (modalContent) {
+          markerListContainer = document.createElement('div');
+          markerListContainer.id = 'paintracker-features-container';
+          markerListContainer.className = 'features-container';
+          modalContent.appendChild(markerListContainer);
+        }
+      }
+
+      function renderMarkerList() {
+        if (!markerListContainer) {
+          return;
+        }
+
+        if (!markerPositions.length) {
+          markerListContainer.innerHTML = '<p>Keine Markierungen vorhanden.</p>';
+          return;
+        }
+
+        var html = '<ul class="pt-marker-list">';
+        markerPositions.forEach(function (entry, index) {
+          var label = 'Marker ' + (index + 1);
+          if (entry.description) {
+            label += ': ' + entry.description;
+          }
+          html += '<li data-index="' + index + '">' +
+                    '<span>' + label + '</span> ' +
+                    '<button type="button" class="pt-marker-delete" data-index="' + index + '">Löschen</button>' +
+                  '</li>';
+        });
+        html += '</ul>';
+
+        markerListContainer.innerHTML = html;
+
+        var buttons = markerListContainer.querySelectorAll('.pt-marker-delete');
+        buttons.forEach(function (btn) {
+          btn.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            var idx = parseInt(btn.getAttribute('data-index'), 10);
+            deleteMarkerByIndex(idx);
+          });
+        });
+      }
+
+      // Initialize marker list UI (empty state) now that markerListContainer is set/created
+      renderMarkerList();
+
+      function deleteMarkerByIndex(index) {
+        if (isNaN(index) || index < 0 || index >= markerPositions.length) {
+          return;
+        }
+
+        var markerData = markerPositions[index];
+
+        // Remove from positions array
+        markerPositions.splice(index, 1);
+
+        // Find and dispose corresponding mesh
+        for (var i = markerMeshes.length - 1; i >= 0; i--) {
+          var m = markerMeshes[i];
+          if (m && m._caDataRef === markerData) {
+            m.dispose();
+            markerMeshes.splice(i, 1);
+            break;
+          }
+        }
+
+        renderMarkerList();
+      }
 
       function enablePointer() {
         pointerEnabled=true;
@@ -136,6 +220,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Re-enable pointer controls
         disablePointer();
         pointerButton.classList.remove("active");
+
+        // Refresh marker list UI
+        renderMarkerList();
       });
 
       saveButton.addEventListener("click", function (event) {
@@ -179,12 +266,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // Add a user-defined description to the marker
         marker.description = description;
 
-        // Store position, size, and description
-        markerPositions.push({
+        // Store position, size, and description and keep a reference on the marker
+        var markerData = {
           position: marker.position.clone(),
           size: selectedMarkerSize,
           description: description
-        });
+        };
+        markerPositions.push(markerData);
+        marker._caDataRef = markerData;
 
         // Attach a click event to the marker to display the description
         marker.actionManager = new BABYLON.ActionManager(scene);
@@ -197,6 +286,9 @@ document.addEventListener("DOMContentLoaded", function () {
         markerMeshes.push(marker);
         disablePointer();
         pointerButton.classList.remove("active");
+
+        // Update the marker list UI
+        renderMarkerList();
       }
 
       // Function to show the marker description in a popup
@@ -240,8 +332,13 @@ document.addEventListener("DOMContentLoaded", function () {
       function handlePointerClick(event) {
         if (pointerEnabled) {
           var canvasRect = canvas.getBoundingClientRect();
-          var offsetX = event.clientX - canvasRect.left;
-          var offsetY = event.clientY - canvasRect.top;
+          // Map mouse position (CSS pixels) into canvas pixel coordinates.
+          // This accounts for differences between canvas width/height and its on-screen size.
+          var cssX = event.clientX - canvasRect.left;
+          var cssY = event.clientY - canvasRect.top;
+
+          var offsetX = cssX * (canvas.width / canvasRect.width);
+          var offsetY = cssY * (canvas.height / canvasRect.height);
 
           // Create a picking ray from the camera through the click point
           var ray = scene.createPickingRay(offsetX, offsetY, BABYLON.Matrix.Identity(), camera);
@@ -265,13 +362,14 @@ document.addEventListener("DOMContentLoaded", function () {
       var canvasCursor=document.getElementById("renderCanvas");
 
       markerSizeSlider.addEventListener("input", function () {
+        // Slider still controls marker size in 3D
         selectedMarkerSize=parseFloat(markerSizeSlider.value);
 
-        // Update the cursor when marker size changes
+        // Cursor should stay same visible red circle size regardless of slider
         if (pointerEnabled) {
-          var cursorSize=selectedMarkerSize * 20;
-          var cursorSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="${cursorSize * 2}" height="${cursorSize * 2}" viewBox="0 0 ${cursorSize * 2} ${cursorSize * 2}" ><circle cx="${cursorSize}" cy="${cursorSize}" r="${cursorSize - 3}" stroke="rgba(255, 0, 0, 0.8)" stroke-width="6" fill="transparent" /></svg>`;
-          canvasCursor.style.cursor=`url('data:image/svg+xml;utf8,${encodeURIComponent(cursorSvg)}') ${cursorSize} ${cursorSize}, auto`;
+          var visualSize = 20; // constant radius in pixels for cursor graphic
+          var cursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualSize * 2}" height="${visualSize * 2}" viewBox="0 0 ${visualSize * 2} ${visualSize * 2}"><circle cx="${visualSize}" cy="${visualSize}" r="${visualSize - 3}" stroke="rgba(255, 0, 0, 0.8)" stroke-width="6" fill="transparent"/></svg>`;
+          canvasCursor.style.cursor = `url('data:image/svg+xml;utf8,${encodeURIComponent(cursorSvg)}') ${visualSize} ${visualSize}, auto`;
         }
       });
 
@@ -289,8 +387,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       canvas.addEventListener("mousemove", function (event) {
         if (pointerEnabled) {
-          var cursorSize=selectedMarkerSize * 20;
-          canvasCursor.style.cursor=`url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${cursorSize * 2}" height="${cursorSize * 2}" viewBox="0 0 ${cursorSize * 2} ${cursorSize * 2}"><circle cx="${cursorSize}" cy="${cursorSize}" r="${cursorSize - 3}" stroke="rgba(255, 0, 0, 0.8)" stroke-width="6" fill="transparent"/></svg>') ${cursorSize} ${cursorSize}, auto`;
+          var visualSize = 20; // constant cursor size
+          canvasCursor.style.cursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="${visualSize * 2}" height="${visualSize * 2}" viewBox="0 0 ${visualSize * 2} ${visualSize * 2}"><circle cx="${visualSize}" cy="${visualSize}" r="${visualSize - 3}" stroke="rgba(255, 0, 0, 0.8)" stroke-width="6" fill="transparent"/></svg>') ${visualSize} ${visualSize}, auto`;
         } else {
           canvasCursor.style.cursor='grab';
         }
