@@ -396,6 +396,83 @@ document.addEventListener("DOMContentLoaded", function () {
 
       canvas.addEventListener("click", handlePointerClick);
 
+      // Expose a viewer helper for loading existing paintracker.json data in a read-only context
+      window.PaintrackerViewer = window.PaintrackerViewer || {};
+      window.PaintrackerViewer.loadFromJsonUrl = function (url) {
+        if (!url) {
+          return;
+        }
+
+        fetch(url, { credentials: 'same-origin' })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error('Failed to load PainTracker JSON');
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            if (!data || !Array.isArray(data.markerPositions)) {
+              return;
+            }
+
+            // Clear existing markers
+            for (var i = 0; i < markerMeshes.length; i++) {
+              if (markerMeshes[i]) {
+                markerMeshes[i].dispose();
+              }
+            }
+            markerMeshes = [];
+            markerPositions = [];
+
+            // Switch model if needed
+            if (data.modelURL === 'female') {
+              selectedModel = 'female';
+              loadAndConfigureModel(modelUrlFemale, scene);
+              var modelToggleEl = document.getElementById('modelToggle');
+              if (modelToggleEl) {
+                modelToggleEl.checked = true;
+              }
+            } else {
+              selectedModel = 'male';
+              loadAndConfigureModel(modelUrlMale, scene);
+              var modelToggleEl2 = document.getElementById('modelToggle');
+              if (modelToggleEl2) {
+                modelToggleEl2.checked = false;
+              }
+            }
+
+            // Recreate markers from stored positions (3D spheres + list).
+            // We intentionally do NOT repaint the mask texture here, because
+            // stored world coordinates do not map cleanly back into the 2D mask
+            // space and can cause stray red dots at the origin.
+            data.markerPositions.forEach(function (entry) {
+              if (!entry || !entry.position) {
+                return;
+              }
+
+              var pos = entry.position;
+              // Support both plain {x,y,z} and Babylon Vector3 serialization {_x,_y,_z}
+              var px = (typeof pos.x === 'number') ? pos.x : (typeof pos._x === 'number' ? pos._x : 0);
+              var py = (typeof pos.y === 'number') ? pos.y : (typeof pos._y === 'number' ? pos._y : 0);
+              var pz = (typeof pos.z === 'number') ? pos.z : (typeof pos._z === 'number' ? pos._z : 0);
+
+              var pickedPoint = new BABYLON.Vector3(px, py, pz);
+              selectedMarkerSize = entry.size || 1;
+              // Recreate the 3D marker and list entry
+              createMarker(selectedMarkerSize, pickedPoint, entry.description || '');
+            });
+
+            renderMarkerList();
+
+            if (typeof openModal === 'function') {
+              openModal();
+            }
+          })
+          .catch(function (err) {
+            console.error('PaintrackerViewer.loadFromJsonUrl error', err);
+          });
+      };
+
       scene.dispose=function () {
         for (var i=0; i < markerPositions.length; i++) {
           markerPositions[i].dispose();
