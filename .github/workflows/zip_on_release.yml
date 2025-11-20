@@ -1,0 +1,20 @@
+name: Zip Files on Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  zip-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create zip
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: .
+          dest: wp-paintracker.zip
+      - name: Upload Release Asset
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          artifacts: "wp-paintracker.zip"
+          token: ${{ secrets.GITHUB_TOKEN }}
