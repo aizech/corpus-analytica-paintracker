@@ -1,0 +1,18 @@
+name: Zip Repository On Commit
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create zip archive
+        run: |
+          zip -r wp-paintracker.zip . -x '*.git*' '.github/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wp-paintracker-zip
+          path: wp-paintracker.zip
