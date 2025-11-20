@@ -3,7 +3,7 @@
  * Plugin Name:       Corpus Analytica – PainTracker
  * Plugin URI:        https://www.corpusanalytica.com/
  * Description:       Interactive 3D pain mapping tool that lets patients mark pain areas on a male/female body model and saves the data as JSON.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Connor Bröder, Bernhard Zechmann
  * Author URI:        https://www.corpusanalytica.com/
  * Text Domain:       wp-corpus-analytica-paintracker
