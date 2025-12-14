@@ -1,39 +1,93 @@
-document.addEventListener('click', function(event) {
-    if (event.target.id === 'closeModalBtn') {
-        closeModal();
+document.addEventListener('DOMContentLoaded', function () {
+    function toggleBodyScroll(modalOpen) {
+        if (modalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
     }
-});
 
-function toggleBodyScroll(modalOpen) {
-    if (modalOpen) {
-        document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = '';
+    function getElements() {
+        return {
+            openModalBtn: document.getElementById('openModalBtn'),
+            modal: document.getElementById('myModal'),
+            overlay: document.getElementById('modalOverlay'),
+            closeBtn: document.querySelector('#myModal .close-btn')
+        };
     }
-}
 
-const openModalBtn = document.getElementById('openModalBtn');
-const modal = document.getElementById('myModal');
+    function ensureTopLayer() {
+        var els = getElements();
+        if (!els.modal || !els.overlay) {
+            return;
+        }
 
-openModalBtn.addEventListener('click', function(event) {
-    event.preventDefault(); // Verhindere das Standardverhalten des Links
-    openModal();
+        // Avoid theme stacking-context issues by putting overlay+modal directly under <body>
+        if (els.overlay.parentNode !== document.body) {
+            document.body.appendChild(els.overlay);
+        }
+        if (els.modal.parentNode !== document.body) {
+            document.body.appendChild(els.modal);
+        }
+    }
+
+    function openModal() {
+        var els = getElements();
+        if (!els.modal || !els.overlay) {
+            return;
+        }
+
+        ensureTopLayer();
+        els.overlay.style.display = 'block';
+        els.modal.style.display = 'block';
+        toggleBodyScroll(true);
+    }
+
+    function closeModal() {
+        var els = getElements();
+        if (!els.modal || !els.overlay) {
+            return;
+        }
+
+        els.modal.style.display = 'none';
+        els.overlay.style.display = 'none';
+        toggleBodyScroll(false);
+    }
+
+    // Expose closeModal globally because inline onclick calls it (from PHP template)
+    window.closeModal = closeModal;
+    window.openModal = openModal;
+
+    var els = getElements();
+    if (els.openModalBtn) {
+        els.openModalBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            openModal();
+        });
+    }
+
+    // Close when clicking on the dark backdrop
+    if (els.overlay) {
+        els.overlay.addEventListener('click', function () {
+            closeModal();
+        });
+    }
+
+    // Close when clicking the X icon
+    if (els.closeBtn) {
+        els.closeBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            closeModal();
+        });
+    }
+
+    // Close on ESC
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
 });
-
-function openModal() {
-    modal.style.display = 'block';
-    document.getElementById('modalOverlay').style.display = 'block';
-    toggleBodyScroll(true);
-
-    // Initialize the Babylon.js scene
-    // initializeBabylonScene();
-}
-
-function closeModal() {
-    modal.style.display = 'none';
-    document.getElementById('modalOverlay').style.display = 'none';
-    toggleBodyScroll(false); // Enable body scrolling
-}
 
 const slideValue = document.querySelector("span");
 const inputSlider = document.querySelector("input");

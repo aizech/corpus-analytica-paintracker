@@ -63,13 +63,36 @@ function enqueue_3d_model_scripts()
 {
     wp_enqueue_script('babylonjs', 'https://cdn.babylonjs.com/babylon.js', array(), '1.0', true);
     wp_enqueue_script('babylonjs-loaders', 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js', array('babylonjs'), '1.0', true);
-    wp_enqueue_script('plugin-script', plugin_dir_url(__FILE__) . 'js/script.js', array('babylonjs', 'babylonjs-loaders'), '1.0', true);
+    $plugin_script_path = plugin_dir_path(__FILE__) . 'js/script.js';
+    $custom_script_path = plugin_dir_path(__FILE__) . 'js/custom-script.js';
+    $style_path = plugin_dir_path(__FILE__) . 'css/style.css';
+
+    wp_enqueue_script(
+        'plugin-script',
+        plugin_dir_url(__FILE__) . 'js/script.js',
+        array('babylonjs', 'babylonjs-loaders'),
+        file_exists($plugin_script_path) ? filemtime($plugin_script_path) : '1.0',
+        true
+    );
     // Expose plugin base URL to JS so we can load GLB models from the plugin folder
     wp_localize_script('plugin-script', 'PaintrackerConfig', array(
         'baseUrl' => plugin_dir_url(__FILE__),
     ));
-    wp_enqueue_script('custom-script', plugin_dir_url(__FILE__) . 'js/custom-script.js', array(), '1.0', true);
-    wp_enqueue_style('plugin-style', plugin_dir_url(__FILE__) . 'css/style.css', array(), '1.0');
+
+    wp_enqueue_script(
+        'custom-script',
+        plugin_dir_url(__FILE__) . 'js/custom-script.js',
+        array('plugin-script'),
+        file_exists($custom_script_path) ? filemtime($custom_script_path) : '1.0',
+        true
+    );
+
+    wp_enqueue_style(
+        'plugin-style',
+        plugin_dir_url(__FILE__) . 'css/style.css',
+        array(),
+        file_exists($style_path) ? filemtime($style_path) : '1.0'
+    );
 }
 
 add_action('wp_enqueue_scripts', 'enqueue_3d_model_scripts');
