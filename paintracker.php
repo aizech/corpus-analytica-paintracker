@@ -3,7 +3,7 @@
  * Plugin Name:       Corpus Analytica – PainTracker
  * Plugin URI:        https://www.corpusanalytica.com/
  * Description:       Interactive 3D pain mapping tool that lets patients mark pain areas on a male/female body model and saves the data as JSON.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Author:            Connor Bröder, Bernhard Zechmann
  * Author URI:        https://www.corpusanalytica.com/
  * Text Domain:       wp-corpus-analytica-paintracker
@@ -61,7 +61,8 @@ if (PAINTRACKER_ENABLE_FREEMIUS && !function_exists('paintracker_fs')) {
 
 function enqueue_3d_model_scripts()
 {
-    wp_enqueue_script('babylonjs', 'https://cdn.babylonjs.com/babylon.js', array(), '1.0', true);
+    // Load Babylon.js from CDN
+    wp_enqueue_script('babylonjs', 'https://cdn.babylonjs.com/babylon.js', array(), '7.0', true);
     wp_enqueue_script('babylonjs-loaders', 'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js', array('babylonjs'), '1.0', true);
     $plugin_script_path = plugin_dir_path(__FILE__) . 'js/script.js';
     $custom_script_path = plugin_dir_path(__FILE__) . 'js/custom-script.js';
@@ -119,22 +120,23 @@ function my_custom_form_tag_handler($tag)
                     <div class="modal-content">
                         <div id="cursor" class="cursor"></div>
                         <div class="canvasContainer">
-                            <canvas id="renderCanvas"></canvas>
-                            <div id="popup" class="popup">
-                                <div class="popup-content">
-                                    <span id="popup-close" class="popup-close">&times;</span>
-                                    <p id="popup-description"></p>
-                                </div>
-                                <div id="descriptionPopup" class="popup">
-                                    <div class="popup-content">
-                                        <span id="descriptionPopup-close" class="popup-close">&times;</span>
-                                        <p>Enter Marker Description:</p>
-                                        <input type="text" id="descriptionInput" placeholder="Enter description...">
-                                        <button id="descriptionConfirm">Confirm</button>
-                                    </div>
-                                </div>
+                            <canvas id="renderCanvas" touch-action="none"></canvas>
+                        </div>
+                        <div id="popup" class="popup">
+                            <div class="popup-content">
+                                <span id="popup-close" class="popup-close">&times;</span>
+                                <p id="popup-description"></p>
                             </div>
-                            <span class="close-btn" onclick="closeModal()">
+                        </div>
+                        <div id="descriptionPopup" class="popup">
+                            <div class="popup-content">
+                                <span id="descriptionPopup-close" class="popup-close">&times;</span>
+                                <p>Enter Marker Description:</p>
+                                <input type="text" id="descriptionInput" placeholder="Enter description...">
+                                <button id="descriptionConfirm">Confirm</button>
+                            </div>
+                        </div>
+                        <span class="close-btn" onclick="closeModal()">
                                 <svg width="45px" height="45px" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
                                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
@@ -158,7 +160,6 @@ function my_custom_form_tag_handler($tag)
                                     </g>
                                 </svg>
                             </span>
-                        </div>
                         <div class="toolbar">
                             <div>
                                 <label class="switch">

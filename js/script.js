@@ -6,9 +6,23 @@ document.addEventListener("DOMContentLoaded", function () {
     canvas.width=canvasSize;
     canvas.height=canvasSize;
 
-    var engine=new BABYLON.Engine(canvas, true);
+    // Create engine with explicit options for touch support
+    var engineOptions = {
+        preserveDrawingBuffer: true,
+        stencil: true
+    };
+    var engine=new BABYLON.Engine(canvas, true, engineOptions);
     var scene=new BABYLON.Scene(engine);
+
+    // Expose engine, scene, and camera globally for modal re-initialization
+    window.painTrackerEngine = engine;
+    window.painTrackerScene = scene;
     scene.clearColor=new BABYLON.Color4(0, 0, 0, 0);
+    
+    // Ensure pointer events are enabled on the scene
+    scene.pointerMovePredicate = function() { return true; };
+    scene.pointerDownPredicate = function() { return true; };
+    scene.pointerUpPredicate = function() { return true; };
 
     var camera=new BABYLON.ArcRotateCamera("camera",
       Math.PI / 2,
@@ -18,9 +32,158 @@ document.addEventListener("DOMContentLoaded", function () {
       scene);
     // Enable intuitive zooming with mouse wheel and clamp zoom distance
     camera.lowerRadiusLimit = canvasSize * 0.5;
-    camera.upperRadiusLimit = canvasSize * 6;
+    camera.upperRadiusLimit = canvasSize * 10;
     camera.wheelDeltaPercentage = 0.01;
+
+    // Attach camera controls for mouse/desktop
     camera.attachControl(canvas, true);
+
+    // Expose camera globally for modal re-initialization
+    window.painTrackerCamera = camera;
+
+    // Custom touch handling for mobile - bypasses Babylon.js touch issues in WordPress
+    var touchState = {
+        lastTouchX: 0,
+        lastTouchY: 0,
+        lastPinchDistance: 0,
+        isTouching: false,
+        touchCount: 0
+    };
+
+    function getTouchDistance(touches) {
+        if (touches.length < 2) return 0;
+        var dx = touches[0].clientX - touches[1].clientX;
+        var dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function getTouchCenter(touches) {
+        if (touches.length < 2) {
+            return { x: touches[0].clientX, y: touches[0].clientY };
+        }
+        return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+    }
+
+    canvas.addEventListener('touchstart', function(e) {
+        // If marking mode is enabled, don't swallow touch events.
+        // We'll handle marker placement on touchend and allow the event to flow.
+        if (window.painTrackerPointerEnabled) {
+            touchState.isTouching = true;
+            touchState.touchCount = e.touches.length;
+            if (e.touches.length === 1) {
+                touchState.lastTouchX = e.touches[0].clientX;
+                touchState.lastTouchY = e.touches[0].clientY;
+            }
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        touchState.isTouching = true;
+        touchState.touchCount = e.touches.length;
+        
+        if (e.touches.length === 1) {
+            touchState.lastTouchX = e.touches[0].clientX;
+            touchState.lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            touchState.lastPinchDistance = getTouchDistance(e.touches);
+            var center = getTouchCenter(e.touches);
+            touchState.lastTouchX = center.x;
+            touchState.lastTouchY = center.y;
+        }
+    }, { passive: false, capture: true });
+
+    canvas.addEventListener('touchmove', function(e) {
+        if (window.painTrackerPointerEnabled) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!touchState.isTouching) return;
+
+        if (e.touches.length === 1 && touchState.touchCount === 1) {
+            // Single finger - rotate camera
+            var deltaX = e.touches[0].clientX - touchState.lastTouchX;
+            var deltaY = e.touches[0].clientY - touchState.lastTouchY;
+            
+            camera.alpha -= deltaX * 0.005;
+            camera.beta -= deltaY * 0.005;
+            
+            // Clamp beta to prevent flipping
+            camera.beta = Math.max(0.1, Math.min(Math.PI - 0.1, camera.beta));
+            
+            touchState.lastTouchX = e.touches[0].clientX;
+            touchState.lastTouchY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            // Two fingers - pinch to zoom and rotate
+            var currentDistance = getTouchDistance(e.touches);
+            var center = getTouchCenter(e.touches);
+            
+            // Pinch zoom
+            if (touchState.lastPinchDistance > 0) {
+                var pinchDelta = touchState.lastPinchDistance - currentDistance;
+                camera.radius += pinchDelta * 2;
+                camera.radius = Math.max(camera.lowerRadiusLimit, Math.min(camera.upperRadiusLimit, camera.radius));
+            }
+            
+            // Two-finger rotation
+            var deltaX = center.x - touchState.lastTouchX;
+            var deltaY = center.y - touchState.lastTouchY;
+            camera.alpha -= deltaX * 0.003;
+            camera.beta -= deltaY * 0.003;
+            camera.beta = Math.max(0.1, Math.min(Math.PI - 0.1, camera.beta));
+            
+            touchState.lastPinchDistance = currentDistance;
+            touchState.lastTouchX = center.x;
+            touchState.lastTouchY = center.y;
+            touchState.touchCount = 2;
+        }
+    }, { passive: false, capture: true });
+
+    canvas.addEventListener('touchend', function(e) {
+        // In marking mode, treat a finger lift as a "tap" to place a marker.
+        // We call the existing click handler to reuse picking logic.
+        if (window.painTrackerPointerEnabled) {
+            if (window.painTrackerHandlePointerClick && e.changedTouches && e.changedTouches.length) {
+                window.painTrackerHandlePointerClick({
+                    clientX: e.changedTouches[0].clientX,
+                    clientY: e.changedTouches[0].clientY
+                });
+            }
+
+            if (e.touches.length === 0) {
+                touchState.isTouching = false;
+                touchState.touchCount = 0;
+                touchState.lastPinchDistance = 0;
+            }
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (e.touches.length === 0) {
+            touchState.isTouching = false;
+            touchState.touchCount = 0;
+            touchState.lastPinchDistance = 0;
+        } else if (e.touches.length === 1) {
+            touchState.touchCount = 1;
+            touchState.lastTouchX = e.touches[0].clientX;
+            touchState.lastTouchY = e.touches[0].clientY;
+            touchState.lastPinchDistance = 0;
+        }
+    }, { passive: false, capture: true });
+
+    canvas.addEventListener('touchcancel', function(e) {
+        touchState.isTouching = false;
+        touchState.touchCount = 0;
+        touchState.lastPinchDistance = 0;
+    }, { passive: false, capture: true });
 
     var sceneCenter=new BABYLON.Vector3(0, 800, 0);
     camera.setTarget(sceneCenter);
@@ -64,7 +227,7 @@ document.addEventListener("DOMContentLoaded", function () {
       canvasSize=Math.min(window.innerWidth, window.innerHeight) * 0.8;
       canvas.width=canvasSize;
       canvas.height=canvasSize;
-      camera.radius=canvasSize * 1.5;
+      camera.radius=canvasSize * 2;
       engine.resize();
     }
 
@@ -121,6 +284,9 @@ document.addEventListener("DOMContentLoaded", function () {
           modalContent.appendChild(markerListContainer);
         }
       }
+
+      // Expose for mobile touch -> marker placement bridging
+      window.painTrackerHandlePointerClick = handlePointerClick;
 
       function renderMarkerList() {
         if (!markerListContainer) {
@@ -185,11 +351,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function enablePointer() {
         pointerEnabled=true;
+        window.painTrackerPointerEnabled = true;
         camera.detachControl(canvas);
       }
 
       function disablePointer() {
           pointerEnabled = false;
+          window.painTrackerPointerEnabled = false;
           canvas.style.cursor = 'grab'; // Stil auf 'grab' setzen
           camera.attachControl(canvas, true);
       }

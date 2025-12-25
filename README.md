@@ -11,6 +11,7 @@ Interactive 3D pain mapping tool for WordPress. PainTracker lets patients mark p
 - Saves all marker data as JSON into a hidden form field
 - Shortcode `[`wp-paintracker`]` to embed the tool anywhere
 - Reusable PHP helper `paintracker_render_widget()` for integrations
+- Support for smartphones with multi-touch gestures 
 
 ## Requirements
 

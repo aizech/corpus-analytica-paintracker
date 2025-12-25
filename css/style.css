@@ -28,6 +28,8 @@
   z-index: 2147483646;
   /* Initially hidden */
   display: none;
+  /* Prevent browser touch gestures on the overlay */
+  touch-action: none;
 }
 
 .no-scroll {
@@ -44,6 +46,11 @@
   /* Solid background to hide page content behind the 3D canvas */
   background-color: #111827;
   /* Maintain aspect ratio */
+  /* Prevent browser default touch gestures so Babylon.js receives all touch events */
+  touch-action: none;
+  -ms-touch-action: none;
+  /* Ensure canvas receives pointer events */
+  pointer-events: auto;
 }
 
 /* Additional styling for the container */
@@ -70,6 +77,8 @@
   align-self: center;
   /* Match modal background so nothing from the page shows through */
   background-color: #111827;
+  /* Allow touch events to pass through to canvas */
+  touch-action: none;
 }
 
 /* .toolbarContainer {
@@ -95,6 +104,8 @@ align-self: center;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+  /* Prevent browser touch gestures on the modal */
+  touch-action: none;
 }
 
 .modal-content {
@@ -104,6 +115,8 @@ align-self: center;
   background: #111827;
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.35);
+  /* Prevent browser touch gestures */
+  touch-action: none;
 }
 
 .close-btn {
@@ -179,6 +192,8 @@ align-self: center;
     max-width: 800px;
     display: block;
     background-color: transparent;
+    /* Prevent browser default touch gestures so Babylon.js receives all touch events */
+    touch-action: none;
   }
 
   .container {
@@ -200,6 +215,45 @@ align-self: center;
     align-content: center;
     align-self: center;
     background-color: transparent;
+    /* Allow touch events to pass through to canvas */
+    touch-action: none;
+  }
+
+  .modal .toolbar {
+    height: auto;
+    min-height: 0;
+    padding: 10px 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .button-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .marker-size-label {
+    width: 100%;
+    margin-right: 0;
+    text-align: center;
+  }
+
+  .range {
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+  }
+
+  #pointerButton,
+  #resetButton,
+  #saveButton {
+    margin-right: 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    flex: 1 1 auto;
   }
 
   .toolbarContainer {
@@ -230,7 +284,7 @@ align-self: center;
     width: 100%;
     max-width: 800px;
     max-height: 100%;
-    z-index: 9999;
+    z-index: 2147483647;
     border-radius: 25px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
